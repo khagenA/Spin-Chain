@@ -80,10 +80,10 @@ def Operator(ListOfTuple, N):
         # using Kronecker product
         for k in Tuple:
             b = k[1]  
-            term = kron_prod(term, np.eye(np.prod(dim[a+1:b])), k[0])
+            term = kron_prod(term, np.eye(int(np.prod(dim[a+1:b]))), k[0])
             a = b
             
-        term = kron_prod(term, np.eye(np.prod(dim[a+1:])))
+        term = kron_prod(term, np.eye(int(np.prod(dim[a+1:]))))
         matrix += term
     return matrix
     
@@ -108,73 +108,66 @@ def Hamiltonian(N,J=1,s=1/2):
     return H
     
 #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-'''
-    This part of program use SciPy to compute eigenvalue problem
-    of large sparse real symmetric square matrix.
-'''
+def calculate_energy(Namx,Nmin):
+    '''
+        This part of program use SciPy to compute eigenvalue problem
+        of large sparse real symmetric square matrix.
+        '''
+    energyList = []
+    for N in range(Nmin,Nmax+1):
+        h = Hamiltonian(N)
+        # solving matrix h
+        #   vals, vecs = np.linalg.eigh(h)
+        #    h is a sparse matrix. so, spare matrix solver is good here
+        vals, vecs = solve.eigsh(h)
+        energyList.append([N,vals[0]/N])
+    
+    return energyList
+    
+#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+def energy_plot(energyList):
+    '''
+        This part of code uses matplotlib.pylab to plot ground
+        state energy per site versus square of inverse chain length.
+        Results are extrapolated to thermodynamic limit using linear fit,
+        polynomial fit of degree one from numpy.
+        '''
+    plt.close('all')
+    plt.figure(figsize=(8,6))
+    plt.title("$E_0/N$ versus $1/N^2$",fontsize=18)
+    
+    # plot for odd number of system size
+    x1 = [1.0/x[0]**2 for x in energyList if x[0]%2 == 1]
+    y1 = [x[1] for x in energyList if x[0]%2 == 1]
+    
+    #Polynomail fit of degree 1 is a linear fit
+    m1,c1=np.polyfit(x1,y1,deg=1)
+    #m1 and c1 are slope and intercept of equation y1=m1*x1+c1
+    poly1=m1*np.array(x1)+c1
+    plt.plot(x1,poly1,color='red',lw=2)
+    plt.plot(x1,y1,'mo',ms=8,label='Odd $E_0/N$= %1.6f'%c1)
+    
+    # plot for even number of system size
+    x2 = [1.0/x[0]**2 for x in energyList if x[0]%2 == 0]
+    y2 = [x[1] for x in energyList if x[0]%2 == 0]
+    m2,c2=np.polyfit(x2,y2,deg=1)
+    poly2=m2*np.array(x2)+c2
+    plt.plot(x2,poly2,color='blue',lw=2)
+    plt.plot(x2,y2,'kD',ms=7,label='Even $E_0/N$= %1.6f'%c2)
+    
+    
+    plt.ylabel('Ground State Energy Per Site $(E_0/N)$',fontsize=14)
+    plt.xlabel('Square of Inverse Chain Length,$1/N^2$',fontsize=14)
+    plt.tick_params(labelsize=12)
+    plt.legend(loc=4)
+    #plt.savefig('Adhikari_Khagen_Mid_Term_Project_Plot.pdf')
+    plt.tight_layout()
+    plt.show()
 #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-# Energy list for a list of odd number of chain length N
-OddEList=[]
-OddNList=[] #List of square of inverse of odd N
-for N in range(Nmin+1,Nmax+1,2):
-	# Hamiltonian matrix of size 2^N by 2^N
-    h=Hamiltonian(N) 
-	# solving matrix h
-#   vals, vecs = np.linalg.eigh(h)
-#	h is a sparse matrix. so, spare matrix solver is good here
-    vals, vecs = solve.eigsh(h)
-    OddEList.append(vals[0]/N) #Ground State energy per site
-    OddNList.append(1.0/N**2)
-    
-# Energy list for a list of even number of chain length N
-EvenEList=[]
-EvenNList=[] # List of square of inverse of even N
-for N in range(Nmin,Nmax,2):
-    h=Hamiltonian(N)
-#   vals, vecs = np.linalg.eigh(h)
-    vals, vecs = solve.eigsh(h)
-	#vals and vecs are eigenvalues and eigenvectors respectively
-    EvenEList.append(vals[0]/N)
-    EvenNList.append(1.0/N**2)
-   
-    
+def main():
+    energyList = calculate_energy(Nmax,Nmin)
+    energy_plot(energyList)
 #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-'''
-    This part of code uses matplotlib.pylab to plot ground 
-    state energy per site versus square of inverse chain length.
-    Results are extrapolated to thermodynamic limit using linear fit,
-    polynomial fit of degree one from numpy.
-'''
-#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-plt.close('all')
-plt.figure(1)
-plt.title("$E_0/N$ versus $1/N^2$",fontsize=18)
-
-# plot for odd number of system size
-x1=OddNList
-y1=OddEList
-
-#Polynomail fit of degree 1 is a linear fit
-m1,c1=np.polyfit(x1,y1,deg=1)
-#m1 and c1 are slope and intercept of equation y1=m1*x1+c1
-poly1=m1*np.array(x1)+c1
-plt.plot(x1,poly1,color='red',lw=2)
-plt.plot(x1,y1,'mo',ms=8,label='Odd $E_0/N$= %1.6f'%c1)
-
-# plot for even number of system size
-x2=EvenNList
-y2=EvenEList
-m2,c2=np.polyfit(x2,y2,deg=1)
-poly2=m2*np.array(x2)+c2
-plt.plot(x2,poly2,color='blue',lw=2)
-plt.plot(x2,y2,'kD',ms=7,label='Even $E_0/N$= %1.6f'%c2)
-
-
-plt.ylabel('Ground State Energy Per Site $(E_0/N)$',fontsize=14)
-plt.xlabel('Square of Inverse Chain Length,$1/N^2$',fontsize=14)
-plt.tick_params(labelsize=12)
-plt.legend(loc=4)
-plt.savefig('Adhikari_Khagen_Mid_Term_Project_Plot.pdf')
-plt.show()
-
+if __name__ == "__main__":
+    main()
 #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
